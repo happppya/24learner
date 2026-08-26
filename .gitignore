@@ -1,0 +1,27 @@
+# Rust
+core/target/
+**/*.rs.bk
+
+# Python
+.venv/
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.ruff_cache/
+
+# Training artifacts
+runs/
+checkpoints/
+*.pt
+*.pth
+*.onnx
+*.safetensors
+
+# Tooling / OS
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
