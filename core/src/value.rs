@@ -13,6 +13,7 @@ impl Elem {
 pub const MAX_UNARY_DEPTH: u8 = 3;
 pub const EPSILON: f64 = 1e-6;
 pub const MAGNITUDE_LIMIT: f64 = 1e8;
+pub const SUCCESS_BONUS: f64 = 100.0;
 
 pub fn near_target(value: f64, target: f64) -> bool {
     (value - target).abs() < EPSILON

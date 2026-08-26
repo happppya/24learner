@@ -11,12 +11,19 @@ Living checklist. Mark items `[x]` when done; append new work under the right ph
 - [x] Virtualenv with CUDA torch 2.13.0+cu130 installed
 - [x] Device abstraction: auto CUDA→CPU selection, bf16/fp16 autocast policy (`learner/device.py`)
 
-## Phase 1 — Rust Core Engine
+## Phase 1 — Rust Core Engine ✅ (2026-08-25)
 
-- [ ] Exhaustive DFS solver over binary ops (baseline correctness oracle)
-- [ ] Property/fuzz tests: Rust vs Python reference env agreement on random states
-- [ ] Shaped-reward function ported to Rust (`-ln(1+min dist) - λt`)
-- [ ] Benchmarks: actions/sec for N ∈ {2, 4, 8, 16, 32, 64, 100}
+- [x] Exhaustive DFS solver over the full action space (`core24::solver::solve_plan`,
+      failure-memoized by value/depth fingerprints, node-budget bounded, plan verification)
+- [x] Property/fuzz parity Rust vs Python: `tests/test_parity.py` drives the NDJSON
+      `engine` binary — action sets, apply outcomes (incl. rejections), rewards,
+      and solver verdicts all agree on seeded random instances
+- [x] Shaped reward ported to Rust (`min_distance`, `shaped_reward`, `terminal_reward`)
+- [x] Benchmarks (`cargo run --release --bin bench`, this workstation, release profile):
+
+| N     | 2        | 4        | 8        | 16       | 32       | 64       | 100      |
+| ----- | -------- | -------- | -------- | -------- | -------- | -------- | -------- |
+| act/s | 30.6 M   | 30.5 M   | 30.0 M   | 25.2 M   | 20.6 M   | 16.9 M   | 13.8 M   |
 
 ## Phase 2 — Bridge & Batched Inference
 

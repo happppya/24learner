@@ -1,5 +1,5 @@
 use crate::ops::{Action, BinaryOp, UnaryOp, apply_binary, apply_unary};
-use crate::value::{Elem, near_target};
+use crate::value::{Elem, SUCCESS_BONUS, near_target};
 
 #[derive(Debug, Clone)]
 pub struct State {
@@ -19,6 +19,25 @@ impl State {
 
     pub fn solved(&self) -> bool {
         self.elems.iter().any(|e| near_target(e.value, self.target))
+    }
+
+    pub fn min_distance(&self) -> f64 {
+        self.elems
+            .iter()
+            .map(|e| (e.value - self.target).abs())
+            .fold(f64::INFINITY, f64::min)
+    }
+
+    pub fn shaped_reward(&self, lambda: f64) -> f64 {
+        -(1.0 + self.min_distance()).ln() - lambda * f64::from(self.steps)
+    }
+
+    pub fn terminal_reward(&self) -> Option<f64> {
+        if self.solved() {
+            Some(SUCCESS_BONUS)
+        } else {
+            None
+        }
     }
 
     pub fn legal_actions(&self) -> Vec<Action> {
@@ -174,6 +193,25 @@ mod tests {
                 })
                 .is_none()
         );
+    }
+
+    #[test]
+    fn reward_shaping_orders_states_by_distance() {
+        let near = State::new(&[23.999], 24.0);
+        let far = State::new(&[-100.0], 24.0);
+        assert!(near.shaped_reward(1e-2) > far.shaped_reward(1e-2));
+        let distance: f64 = 24.0 - 23.999;
+        let expected_zero_lambda = -(1.0 + distance).ln();
+        assert!((near.shaped_reward(0.0) - expected_zero_lambda).abs() < 1e-12);
+    }
+
+    #[test]
+    fn terminal_reward_pays_only_on_success() {
+        assert_eq!(
+            State::new(&[24.0], 24.0).terminal_reward(),
+            Some(SUCCESS_BONUS)
+        );
+        assert_eq!(State::new(&[23.0], 24.0).terminal_reward(), None);
     }
 
     #[test]

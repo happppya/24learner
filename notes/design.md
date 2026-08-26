@@ -48,6 +48,24 @@ distance term dominates shaping.
 
 ## Decision Log
 
+### 2026-08-25 — Phase 1: solver scope, memo soundness, parity transport
+
+- **Solver spans the full action space** (binary + unary), not binary-only: depth tags cap unary
+  chains between merges and merges bound resets, so the reachable space is finite and exhaustive
+  DFS terminates. Failures memoized on sorted `(value.to_bits(), depth)` fingerprints.
+- **Memo soundness:** identical fingerprints imply identical element count, which pins search
+  depth (merges strictly shrink sets; no cycle returns to an exact value+depth multiset), so
+  remaining budget is depth-determined and caching failures across branches is safe.
+- **Budget semantics:** solved-state detection precedes budget accounting (terminal recognition
+  costs nothing); every child at `budget == 1` must still be visited because any could solve at
+  zero further cost. An early-break optimization here silently dropped solutions (caught by the
+  `{2,3,5}→30` unit test).
+- **Parity transport pre-PyO3:** NDJSON subprocess bridge (`core/src/bin/engine.rs`) driven by
+  pytest. Python owns case generation (single RNG authority); Rust evaluates. This doubles as
+  the IPC-fallback prototype for the Phase 2 transport decision.
+- **Reward mirrored verbatim:** $R = -\ln(1+\min_v|v-T|) - \lambda t$, default $\lambda = 10^{-2}$
+  both sides; terminal bonus `SUCCESS_BONUS = 100`.
+
 ### 2026-08-25 — Core language: Rust (not C++)
 
 Machine has cargo 1.93 but no C++ compiler (no cmake/msvc/clang). Rust gives memory-safe parallel

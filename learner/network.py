@@ -49,9 +49,7 @@ class ISAB(nn.Module):
         self.mab_in = MAB(dim, heads)
         self.mab_out = MAB(dim, heads)
 
-    def forward(
-        self, tokens: torch.Tensor, pad_mask: torch.Tensor | None = None
-    ) -> torch.Tensor:
+    def forward(self, tokens: torch.Tensor, pad_mask: torch.Tensor | None = None) -> torch.Tensor:
         seeds = self.inducing.unsqueeze(0).expand(tokens.size(0), -1, -1)
         h = self.mab_in(seeds, tokens, pad_mask)
         return self.mab_out(tokens, h)

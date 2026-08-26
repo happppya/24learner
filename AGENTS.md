@@ -39,6 +39,10 @@ notes/          design.md (decisions, open questions) and todos.md (roadmap)
 | Build + test Rust       | `cargo test`                                                   | `core`     |
 | Lint Rust               | `cargo clippy --all-targets`                                   | `core`     |
 | Format Rust             | `cargo fmt`                                                    | `core`     |
+| Engine throughput bench | `cargo run --release --bin bench`                              | `core`     |
+
+The parity suite (`tests/test_parity.py`) builds and drives the Rust `engine` binary via NDJSON;
+run plain `pytest` and it participates automatically.
 
 Run `cargo test`, `pytest`, and `ruff check` before claiming any change is complete.
 
