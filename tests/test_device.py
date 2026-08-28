@@ -24,7 +24,7 @@ def test_precision_rules_on_cpu():
     cpu = torch.device("cpu")
     assert resolve_precision("bf16", cpu) == torch.bfloat16
     assert resolve_precision("fp32", cpu) is None
-    assert resolve_precision("auto", cpu) == torch.bfloat16
+    assert resolve_precision("auto", cpu) is None  # fp32: bf16 is slower and drifts on CPU
 
 
 def test_fp16_rejected_off_cuda():

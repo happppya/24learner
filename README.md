@@ -50,7 +50,7 @@ CPU-iGPU inference pipeline.
 | ------------------- | --------------------------------------------- |
 | Rule engine/search  | Rust (crate `core24` in `core/`)              |
 | Policy-value net    | Python 3.14 + PyTorch 2.x (CUDA 13.0 build)   |
-| Training precision  | BF16 (CPU + CUDA) / FP16 (CUDA only)          |
+| Training precision  | BF16 / FP16 (CUDA only); fp32 default on CPU  |
 | Hardware            | Dev: iGPU workstation · Target: RTX 3090      |
 | Bridge (planned)    | PyO3 bindings + batched inference queue       |
 

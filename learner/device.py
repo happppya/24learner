@@ -18,7 +18,9 @@ def resolve_device(preference: str = "auto") -> torch.device:
 
 def resolve_precision(precision: str, device: torch.device) -> torch.dtype | None:
     if precision == "auto":
-        precision = "bf16" if device.type in {"cuda", "cpu"} else "fp32"
+        # bf16 pays on CUDA tensor cores; on CPU it is slower than fp32 and its
+        # 8-bit mantissa compounds to material logit/prior drift (see notes/check_autocast.py).
+        precision = "bf16" if device.type == "cuda" else "fp32"
     if precision == "fp32":
         return None
     if precision == "bf16":

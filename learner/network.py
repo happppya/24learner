@@ -80,7 +80,7 @@ class SetTransformer24(nn.Module):
         self.depth_embed = nn.Embedding(4, 8)
         self.elem_proj = nn.Linear(9, dim)
         self.target_proj = nn.Linear(3, dim)
-        self.encoder = nn.Sequential(*[ISAB(dim, heads, num_inducing) for _ in range(num_layers)])
+        self.encoder = nn.ModuleList([ISAB(dim, heads, num_inducing) for _ in range(num_layers)])
         self.condense = MAB(dim, heads)
         self.pair_weight = nn.Parameter(torch.empty(len(BINARY_OPS), 3 * dim).normal_(std=0.02))
         self.pair_bias = nn.Parameter(torch.zeros(len(BINARY_OPS)))
@@ -99,10 +99,15 @@ class SetTransformer24(nn.Module):
         if pad_mask is None:
             pad_mask = torch.zeros(batch, num, dtype=torch.bool, device=values.device)
         token_in = torch.cat([values.unsqueeze(-1), self.depth_embed(depths.clamp(max=3))], dim=-1)
-        tokens = self.encoder(self.elem_proj(token_in))
+        tokens = self.elem_proj(token_in)
+        for block in self.encoder:
+            tokens = block(tokens, pad_mask)
         target_in = torch.stack([target, torch.log1p(target.abs()), torch.sign(target)], dim=-1)
         target_token = self.condense(self.target_proj(target_in).unsqueeze(1), tokens, pad_mask)
-        pooled = self.pma(torch.cat([tokens, target_token], dim=1))
+        value_mask = torch.cat(
+            [pad_mask, torch.zeros(batch, 1, dtype=torch.bool, device=values.device)], dim=1
+        )
+        pooled = self.pma(torch.cat([tokens, target_token], dim=1), value_mask)
         value = torch.tanh(self.value_head(pooled.squeeze(1))).squeeze(-1)
 
         binary_logits = self._pair_logits(tokens)
@@ -135,3 +140,37 @@ def top_k_action_mask(
     mask_bin = selected[:, : flat_bin.size(1)].view_as(binary_logits)
     mask_un = selected[:, flat_bin.size(1) :].view_as(unary_logits)
     return mask_bin, mask_un
+
+
+def action_logit(binary_logits: torch.Tensor, unary_logits: torch.Tensor, action: tuple) -> torch.Tensor:
+    """Logit for one canonical action tuple: ("binary", i, j, op) or ("unary", i, 0, op)."""
+    kind, i, j, op = action
+    if kind == "binary":
+        return binary_logits[i, j, BINARY_OPS.index(op)]
+    return unary_logits[i, UNARY_OPS.index(op)]
+
+
+def top_k_priors(
+    binary_logits: torch.Tensor,
+    unary_logits: torch.Tensor,
+    legal_actions: list[tuple],
+    k: int = 16,
+) -> list[tuple[tuple, float]]:
+    """Softmax-normalized priors over the top-K legal actions for MCTS.
+
+    `legal_actions` uses the canonical transport form returned by
+    `pycore24.GameState.legal_actions()`: ("binary", i, j, op) or
+    ("unary", i, 0, op). Scores are the corresponding logits; the top `k` by
+    score are kept and softmaxed, so priors sum to 1. Non-finite scores are
+    dropped before selection (engine-legal actions should never hit them), so
+    MCTS never receives NaN priors. Returns [(action, prior), ...] ranked by
+    descending score.
+    """
+    scores = torch.empty(len(legal_actions), dtype=torch.float32, device=binary_logits.device)
+    for idx, action in enumerate(legal_actions):
+        scores[idx] = action_logit(binary_logits, unary_logits, action)
+    order = torch.isfinite(scores).nonzero().squeeze(-1)
+    order = order[scores[order].argsort(descending=True)][:k]
+    top = [legal_actions[i] for i in order.tolist()]
+    priors = scores[order].softmax(dim=-1)
+    return [(action, float(prior)) for action, prior in zip(top, priors.tolist(), strict=True)]
